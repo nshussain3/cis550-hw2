@@ -193,27 +193,22 @@ async function player(req, res) {
                 console.log(error)
                 res.json({ error: error })
             } else if (results) {
-                if (results.length === 0) {
+                if (results.length == 0) {
                     res.json({ results: results })
                 } 
                 else {
-                    if (results[0].BestPosition == 'GK') {
-                        delete results[0].NPassing
-                        delete results[0].NBallControl
-                        delete results[0].NAdjustedAgility
-                        delete results[0].NStamina
-                        delete results[0].NStrength
-                        delete results[0].NPositioning
+                    if (results[0].BestPosition != 'GK') {
+                        console.log(results[0])
+                        const {GKPenalties, GKDiving, GKHandling, GKKicking, GKPositioning, GKReflexes, ...filtered} = results[0]
+                        results[0] = filtered
+                        res.json({results : results})
                     }
                     else {
-                        delete results[0].GKPenalties
-                        delete results[0].GKDiving
-                        delete results[0].GKHandling
-                        delete results[0].GKKicking
-                        delete results[0].GKPositioning
-                        delete results[0].GKReflexes
+                        console.log(results[0])
+                        const {NPassing, NBallControl, NAdjustedAgility,NStamina, NStrength, NPositioning, ...filtered} = results[0]
+                        results[0] = filtered
+                        res.json({results : results})
                     }
-                    res.json({results : results})
                 }
                 
             }
