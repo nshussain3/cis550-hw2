@@ -40,14 +40,14 @@ async function jersey(req, res) {
 
     if (req.params.choice === 'number') {
         // TODO: TASK 1: inspect for issues and correct 
-        res.json({ message: `Hello, ${name}!`, lucky_number: jersey_number })
+        res.json({ message: `Hello, ${name}!`, jersey_number: jersey_number })
     } else if (req.params.choice === 'color') {
-        var lucky_color_index = Math.floor(Math.random() * 2) + 1;
+        var lucky_color_index = Math.floor(Math.random() * 2);
         // TODO: TASK 2: change this or any variables above to return only 'red' or 'blue' at random (go Quakers!)
         res.json({ message: `Hello, ${name}!`, jersey_color: colors[lucky_color_index] })
     } else {
         // TODO: TASK 3: inspect for issues and correct
-        res.json({ message: `Hello,${name}, we like your jersey!` })
+        res.json({ message: `Hello, ${name}, we like your jersey!` })
     }
 }
 
@@ -70,6 +70,23 @@ async function all_matches(req, res) {
         // This is the case where page is defined.
         // The SQL schema has the attribute OverallRating, but modify it to match spec! 
         // TODO: query and return results here:
+        if (!req.query.pagesize || isNaN(req.query.pagesize)) {
+            req.query.pagesize = 10
+        }
+        const offset = (req.query.page - 1) * req.query.pagesize
+        connection.query(`SELECT MatchId, Date, Time, HomeTeam AS Home, AwayTeam AS Away, FullTimeGoalsH AS HomeGoals, FullTimeGoalsA AS AwayGoals  
+        FROM Matches 
+        WHERE Division = '${league}'
+        ORDER BY HomeTeam, AwayTeam
+        LIMIT ${offset}, ${req.query.pagesize};`, function (error, results, fields) {
+
+            if (error) {
+                console.log(error)
+                res.json({ error: error })
+            } else if (results) {
+                res.json({ results: results })
+            }
+        });
    
     } else {
         // we have implemented this for you to see how to return results by querying the database
@@ -91,9 +108,36 @@ async function all_matches(req, res) {
 // Route 4 (handler)
 async function all_players(req, res) {
     // TODO: TASK 5: implement and test, potentially writing your own (ungraded) tests
+    if (req.query.page && !isNaN(req.query.page)) {
+        if (!req.query.pagesize || isNaN(req.query.pagesize)) {
+            req.query.pagesize = 10
+        }
+        const offset = (req.query.page - 1) * req.query.pagesize
+        connection.query(`SELECT PlayerId, Name, Nationality, OverallRating as Rating, Potential, Club, Value  
+        FROM Players
+        LIMIT ${offset}, ${req.query.pagesize};`, function (error, results, fields) {
     
+            if (error) {
+                console.log(error)
+                res.json({ error: error })
+            } else if (results) {
+                res.json({ results: results })
+            }
+        });
+    }
+    else {
+        connection.query(`SELECT PlayerId, Name, Nationality, OverallRating as Rating, Potential, Club, Value  
+        FROM Players;`, function (error, results, fields) {
+    
+            if (error) {
+                console.log(error)
+                res.json({ error: error })
+            } else if (results) {
+                res.json({ results: results })
+            }
+        });        
+    }
 
-    return res.json({error: "Not implemented"})
 }
 
 
@@ -104,7 +148,27 @@ async function all_players(req, res) {
 // Route 5 (handler)
 async function match(req, res) {
     // TODO: TASK 6: implement and test, potentially writing your own (ungraded) tests
-    return res.json({error: "Not implemented"})
+
+    if (req.query.id) {
+        connection.query(`SELECT MatchId, Date, Time, 
+        HomeTeam as Home, AwayTeam as Away, FullTimeGoalsH as HomeGoals, 
+        FullTimeGoalsA as AwayGoals, HalfTimeGoalsH as HTHomeGoals, 
+        HalfTimeGoalsA as HTAwayGoals, ShotsH as ShotsHome, ShotsA as ShotsAway, 
+        ShotsOnTargetH as ShotsOnTargetHome, ShotsOnTargetA as ShotsOnTargetAway, 
+        FoulsH as FoulsHome, FoulsA as FoulsAway, CornersH as CornersHome, 
+        CornersA as CornersAway, YellowCardsH as YCHome, YellowCardsA as YCAway, 
+        RedCardsH as RCHome, RedCardsA as RCAway 
+        FROM Matches
+        WHERE MatchId = ${req.query.id};`, 
+        function (error, results, fields) {
+            if (error) {
+                console.log(error)
+                res.json({ error: error })
+            } else if (results) {
+                res.json({ results: results })
+            }
+        });
+    }
 }
 
 // ********************************************
@@ -114,7 +178,48 @@ async function match(req, res) {
 // Route 6 (handler)
 async function player(req, res) {
     // TODO: TASK 7: implement and test, potentially writing your own (ungraded) tests
-    return res.json({error: "Not implemented"})
+     // json.parse(json.stringify(results))
+     if (req.query.id) {
+        connection.query(`SELECT PlayerId, Name, Age, Photo, Nationality,
+        Flag, OverallRating as Rating, Potential, Club, ClubLogo, Value,
+        Wage, InternationalReputation, Skill, JerseyNumber, ContractValidUntil,
+        Height, Weight, BestPosition, BestOverallRating, ReleaseClause,
+        GKPenalties, GKDiving, GKHandling, GKKicking, GKPositioning, GKReflexes,
+        NPassing, NBallControl, NAdjustedAgility, NStamina, NStrength, NPositioning
+        FROM Players
+        WHERE PlayerId = ${req.query.id};`, 
+        function (error, results, fields) {
+            if (error) {
+                console.log(error)
+                res.json({ error: error })
+            } else if (results) {
+                if (results.length === 0) {
+                    res.json({ results: results })
+                } 
+                else {
+                    if (results[0].BestPosition == 'GK') {
+                        delete results[0].NPassing
+                        delete results[0].NBallControl
+                        delete results[0].NAdjustedAgility
+                        delete results[0].NStamina
+                        delete results[0].NStrength
+                        delete results[0].NPositioning
+                    }
+                    else {
+                        delete results[0].GKPenalties
+                        delete results[0].GKDiving
+                        delete results[0].GKHandling
+                        delete results[0].GKKicking
+                        delete results[0].GKPositioning
+                        delete results[0].GKReflexes
+                    }
+                    res.json({results : results})
+                }
+                
+            }
+        });
+    }
+
 }
 
 
@@ -126,9 +231,45 @@ async function player(req, res) {
 async function search_matches(req, res) {
     // TODO: TASK 8: implement and test, potentially writing your own (ungraded) tests
     // IMPORTANT: in your SQL LIKE matching, use the %query% format to match the search query to substrings, not just the entire string
-
-    return res.json({error: "Not implemented"})
-
+    const home = (req.query.Home) ? req.query.Home: ''
+    const away = req.query.Away ? req.query.Away : ''
+    if (req.query.page && !(isNaN(req.query.page))) {
+        if (!req.query.pagesize || isNaN(req.query.pagesize)) {
+            req.query.pagesize = 10
+        }
+        const offset = (req.query.page - 1) * req.query.pagesize
+        connection.query(
+            `SELECT MatchId, Date, Time, HomeTeam as Home, AwayTeam as Away,
+            FullTimeGoalsH as HomeGoals, FullTimeGoalsA as AwayGoals
+            FROM Matches
+            WHERE HomeTeam LIKE '%${home}%' AND AwayTeam LIKE '%${away}%'
+            ORDER By HomeTeam, AwayTeam
+            LIMIT ${offset}, ${req.query.pagesize};`,
+            function (error, results, fields) {
+                if (error) {
+                    console.log(error)
+                    res.json({ error: error })
+                } else if (results) {
+                    res.json({ results: results })
+                }
+            });
+    }
+    else {
+        connection.query(
+            `SELECT MatchId, Date, Time, HomeTeam as Home, AwayTeam as Away,
+            FullTimeGoalsH as HomeGoals, FullTimeGoalsA as AwayGoals
+            FROM Matches
+            WHERE HomeTeam LIKE '%${home}%' AND AwayTeam LIKE '%${away}%'
+            ORDER By HomeTeam, AwayTeam;`,
+            function (error, results, fields) {
+                if (error) {
+                    console.log(error)
+                    res.json({ error: error })
+                } else if (results) {
+                    res.json({ results: results })
+                }
+            });  
+    }
 
 }
 
@@ -136,8 +277,56 @@ async function search_matches(req, res) {
 async function search_players(req, res) {
     // TODO: TASK 9: implement and test, potentially writing your own (ungraded) tests
     // IMPORTANT: in your SQL LIKE matching, use the %query% format to match the search query to substrings, not just the entire string
+    const name = req.query.Name ? req.query.Name: ''
+    const nationality = req.query.Nationality ? req.query.Nationality: ''
+    const club = req.query.Club ? req.query.Club : ''
+    const rating_low = (req.query.RatingLow && !isNaN(req.query.RatingLow)) ? req.query.RatingLow : 0
+    const rating_high = (req.query.RatingHigh && !isNaN(req.query.RatingHigh)) ? req.query.RatingHigh : 100
+    const potential_low = (req.query.PotentialLow && !isNaN(req.query.PotentialLow)) ? req.query.PotentialLow : 0
+    const potential_high = (req.query.PotentialHigh && !isNaN(req.query.PotentialHigh)) ? req.query.PotentialHigh : 100
     
-    return res.json({error: "Not implemented"})
+    
+    if (req.query.page && !(isNaN(req.query.page))) {
+        if (!req.query.pagesize || isNaN(req.query.pagesize)) {
+            req.query.pagesize = 10
+        }
+        const offset = (req.query.page - 1) * req.query.pagesize
+        connection.query(
+            `SELECT PlayerId, Name, Nationality, OverallRating as Rating, Potential,
+            Club, Value
+            FROM Players
+            WHERE Name LIKE '%${name}%' AND Nationality LIKE '%${nationality}%'
+            AND OverallRating >= ${rating_low} AND OverallRating <= ${rating_high}
+            AND Potential >= ${potential_low} AND Potential <= ${potential_high}
+            ORDER By Name
+            LIMIT ${offset}, ${req.query.pagesize};`,
+            function (error, results, fields) {
+                if (error) {
+                    console.log(error)
+                    res.json({ error: error })
+                } else if (results) {
+                    res.json({ results: results })
+                }
+            });
+    }
+    else {
+        connection.query(
+            `SELECT PlayerId, Name, Nationality, OverallRating as Rating, Potential,
+            Club, Value
+            FROM Players
+            WHERE Name LIKE '%${name}%' AND Nationality LIKE '%${nationality}%'
+            AND OverallRating >= ${rating_low} AND OverallRating <= ${rating_high}
+            AND Potential >= ${potential_low} AND Potential <= ${potential_high}
+            ORDER By Name;`,
+            function (error, results, fields) {
+                if (error) {
+                    console.log(error)
+                    res.json({ error: error })
+                } else if (results) {
+                    res.json({ results: results })
+                }
+            });  
+    }
 }
 
 module.exports = {
